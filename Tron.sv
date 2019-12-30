@@ -15,15 +15,21 @@ module Tron(
 	wire G;
 	wire B;
 	
-	wire [4:0] direction;
+	wire [4:0] direction1, direction2;
 	reg [6:0] size = 40;
-	reg [9:0] snakeX[0:127];
-	reg [8:0] snakeY[0:127];
-	reg [9:0] snakeHeadX;
-	reg [9:0] snakeHeadY;
+	reg [9:0] snakeX1[0:127];
+	reg [8:0] snakeY1[0:127];
+	reg [9:0] snakeHeadX1;
+	reg [9:0] snakeHeadY1;
+	reg [9:0] snakeX2[0:127];
+	reg [8:0] snakeY2[0:127];
+	reg [9:0] snakeHeadX2;
+	reg [9:0] snakeHeadY2;
 	integer start = 1;
-	reg snakeHead;
-	reg snakeBody;
+	reg snakeHead1;
+	reg snakeBody1;
+	reg snakeHead2;
+	reg snakeBody2;
 	reg border;
 	reg found;
 	wire update, reset;
@@ -31,7 +37,7 @@ module Tron(
 	
 	clk_reduce reduce1(clk, VGA_clk);
 	VGA_gen gen1(VGA_clk, xCount, yCount, displayArea, VGA_hSync, VGA_vSync);
-	kbInput kbIn(keyboardCLK, keyboardData, direction, reset);
+	kbInput kbIn(keyboardCLK, keyboardData, direction1, direction2, reset);
 	updateClk UPDATE(clk, update);
 	
 	
@@ -48,23 +54,23 @@ module Tron(
 				begin
 					if(count1 <= size - 1)
 					begin
-						snakeX[count1] = snakeX[count1 - 1];
-						snakeY[count1] = snakeY[count1 - 1];
+						snakeX1[count1] = snakeX1[count1 - 1];
+						snakeY1[count1] = snakeY1[count1 - 1];
 					end
 				end
-			case(direction)
-				5'b00010: snakeY[0] <= (snakeY[0] - 10);
-				5'b00100: snakeX[0] <= (snakeX[0] - 10);
-				5'b01000: snakeY[0] <= (snakeY[0] + 10);
-				5'b10000: snakeX[0] <= (snakeX[0] + 10);
+			case(direction1)
+				5'b00010: snakeY1[0] <= (snakeY1[0] - 10);
+				5'b00100: snakeX1[0] <= (snakeX1[0] - 10);
+				5'b01000: snakeY1[0] <= (snakeY1[0] + 10);
+				5'b10000: snakeX1[0] <= (snakeX1[0] + 10);
 			endcase	
 		end
 		else if(start == 0)
 		begin
 			for(count3 = 1; count3 < 128; count3 = count3+1)
 				begin
-					snakeX[count3] = 700;
-					snakeY[count3] = 500;
+					snakeX1[count3] = 700;
+					snakeY1[count3] = 500;
 				end
 		end
 	
@@ -78,21 +84,74 @@ module Tron(
 		begin
 			if(~found)
 			begin				
-				snakeBody = ((xCount > snakeX[count2] && xCount < snakeX[count2]+10) && (yCount > snakeY[count2] && yCount < snakeY[count2]+10));
-				found = snakeBody;
+				snakeBody1 = ((xCount > snakeX1[count2] && xCount < snakeX1[count2]+10) && (yCount > snakeY1[count2] && yCount < snakeY1[count2]+10));
+				found = snakeBody1;
 			end
 		end
 	end
 	
 	always@(posedge VGA_clk)
 	begin	
-		snakeHead = (xCount > snakeX[0] && xCount < (snakeX[0]+10)) && (yCount > snakeY[0] && yCount < (snakeY[0]+10));
+		snakeHead1 = (xCount > snakeX1[0] && xCount < (snakeX1[0]+10)) && (yCount > snakeY1[0] && yCount < (snakeY1[0]+10));
 	end
 	
-	assign G = (displayArea && snakeHead);
-	assign B = (displayArea && (border || snakeBody));
+	//snake2
+	always@(posedge update)
+	begin
+		if(start == 1)
+		begin
+			for(count1 = 127; count1 > 0; count1 = count1 - 1)
+				begin
+					if(count1 <= size - 1)
+					begin
+						snakeX2[count1] = snakeX2[count1 - 1];
+						snakeY2[count1] = snakeY2[count1 - 1];
+					end
+				end
+			case(direction2)
+				5'b00010: snakeY2[0] <= (snakeY2[0] - 10);
+				5'b00100: snakeX2[0] <= (snakeX2[0] - 10);
+				5'b01000: snakeY2[0] <= (snakeY2[0] + 10);
+				5'b10000: snakeX2[0] <= (snakeX2[0] + 10);
+			endcase	
+		end
+		else if(start == 0)
+		begin
+			for(count3 = 1; count3 < 128; count3 = count3+1)
+				begin
+					snakeX2[count3] = 700;
+					snakeY2[count3] = 500;
+				end
+		end
+	
+	end
+	
 	always@(posedge VGA_clk)
 	begin
+		found = 0;
+		
+		for(count2 = 1; count2 < size; count2 = count2 + 1)
+		begin
+			if(~found)
+			begin				
+				snakeBody2 = ((xCount > snakeX2[count2] && xCount < snakeX2[count2]+10) && (yCount > snakeY2[count2] && yCount < snakeY2[count2]+10));
+				found = snakeBody2;
+			end
+		end
+	end
+	
+	always@(posedge VGA_clk)
+	begin	
+		snakeHead2 = (xCount > snakeX2[0] && xCount < (snakeX2[0]+10)) && (yCount > snakeY2[0] && yCount < (snakeY2[0]+10));
+	end
+	//end snake2
+	
+	assign R = (displayArea && snakeHead2);
+	assign G = (displayArea && snakeHead1);
+	assign B = (displayArea && (border || snakeBody1 || snakeBody2));
+	always@(posedge VGA_clk)
+	begin
+		Red = {3{R}};
 		Green = {3{G}};
 		Blue = {3{B}};
 	end
@@ -165,10 +224,10 @@ module VGA_gen(VGA_clk, xCount, yCount, displayArea, VGA_hSync, VGA_vSync);
 	assign VGA_hSync = ~p_hSync;
 endmodule
 
-module kbInput(keyboardCLK, keyboardData, direction, reset);
+module kbInput(keyboardCLK, keyboardData, direction1, direction2, reset);
 
 	input keyboardCLK, keyboardData;
-	output reg [4:0] direction;
+	output reg [4:0] direction1, direction2;
 	output reg reset = 0; 
 	reg [7:0] code;
 	reg [10:0]keyCode;
@@ -190,25 +249,49 @@ always@(negedge keyboardCLK)
 	begin
 		if(code == 8'h1D)
 		begin
-			direction <= 5'b00010;
-			//direction2 <= direction2;
+			direction1 <= 5'b00010;
+			direction2 <= direction2;
 		end
 		else if(code == 8'h1C)
 		begin
-			direction <= 5'b00100;
-			//direction2 <= direction2;
+			direction1 <= 5'b00100;
+			direction2 <= direction2;
 		end
 		else if(code == 8'h1B)
 		begin
-			direction <= 5'b01000;
-			//direction2 <= direction2;
+			direction1 <= 5'b01000;
+			direction2 <= direction2;
 		end
 		else if(code == 8'h23)
 		begin
-			direction <= 5'b10000;
-			//direction2 <= direction2;
+			direction1 <= 5'b10000;
+			direction2 <= direction2;
 		end
-		else direction <= direction;
+		else if(code == 8'h43)
+		begin
+			direction2 <= 5'b00010;
+			direction1 <= direction1;
+		end
+		else if(code == 8'h3B)
+		begin
+			direction2 <= 5'b00100;
+			direction1 <= direction1;
+		end
+		else if(code == 8'h42)
+		begin
+			direction2 <= 5'b01000;
+			direction1 <= direction1;
+		end
+		else if(code == 8'h4B)
+		begin
+			direction2 <= 5'b10000;
+			direction1 <= direction1;
+		end
+		else 
+		begin
+			direction2 <= direction2;
+			direction1 <= direction1;
+		end
 	end	
 endmodule
 
