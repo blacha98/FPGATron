@@ -1,4 +1,5 @@
 module Tron(
+	input start,
 	input clk,
 	//do klawiatury
 	input keyboardData, keyboardCLK, 
@@ -25,11 +26,11 @@ module Tron(
 	reg [8:0] snakeY2[0:127];
 	reg [9:0] snakeHeadX2;
 	reg [9:0] snakeHeadY2;
-	integer start = 1;
 	reg snakeHead1;
 	reg snakeBody1;
 	reg snakeHead2;
 	reg snakeBody2;
+	reg endGame;
 	reg border;
 	reg found;
 	wire update, reset;
@@ -37,7 +38,7 @@ module Tron(
 	
 	clk_reduce reduce1(clk, VGA_clk);
 	VGA_gen gen1(VGA_clk, xCount, yCount, displayArea, VGA_hSync, VGA_vSync);
-	kbInput kbIn(keyboardCLK, keyboardData, direction1, direction2, reset);
+	kbInput kbIn(keyboardCLK, keyboardData, direction1, direction2);
 	updateClk UPDATE(clk, update);
 	
 	
@@ -48,7 +49,7 @@ module Tron(
 	
 	always@(posedge update)
 	begin
-		if(start == 1)
+		if(start)
 		begin
 			for(count1 = 127; count1 > 0; count1 = count1 - 1)
 				begin
@@ -65,12 +66,12 @@ module Tron(
 				5'b10000: snakeX1[0] <= (snakeX1[0] + 10);
 			endcase	
 		end
-		else if(start == 0)
+		else if(~start)
 		begin
-			for(count3 = 1; count3 < 128; count3 = count3+1)
+			for(count3 = 0; count3 < 128; count3 = count3+1)
 				begin
-					snakeX1[count3] = 700;
-					snakeY1[count3] = 500;
+					snakeX1[count3] = 160;
+					snakeY1[count3] = 160;
 				end
 		end
 	
@@ -98,7 +99,7 @@ module Tron(
 	//snake2
 	always@(posedge update)
 	begin
-		if(start == 1)
+		if(start)
 		begin
 			for(count1 = 127; count1 > 0; count1 = count1 - 1)
 				begin
@@ -115,12 +116,12 @@ module Tron(
 				5'b10000: snakeX2[0] <= (snakeX2[0] + 10);
 			endcase	
 		end
-		else if(start == 0)
+		else if(~start)
 		begin
-			for(count3 = 1; count3 < 128; count3 = count3+1)
+			for(count3 = 0; count3 < 128; count3 = count3+1)
 				begin
-					snakeX2[count3] = 700;
-					snakeY2[count3] = 500;
+					snakeX2[count3] = 300;
+					snakeY2[count3] = 300;
 				end
 		end
 	
@@ -146,9 +147,28 @@ module Tron(
 	end
 	//end snake2
 	
-	assign R = (displayArea && snakeHead2);
-	assign G = (displayArea && snakeHead1);
-	assign B = (displayArea && (border || snakeBody1 || snakeBody2));
+	always@ (posedge VGA_clk)
+	begin
+		if(start)
+		begin
+			if(snakeHead1 && (border || snakeBody2))
+			begin
+				endGame = 1;
+			end
+			else if(snakeHead2 && (border || snakeBody1))
+			begin
+				endGame = 1;
+			end
+		end
+		else if (~start)
+		begin
+			endGame = 0;
+		end
+	end
+	
+	assign R = (displayArea && (snakeHead2 || endGame));
+	assign G = (displayArea && snakeHead1 && ~endGame);
+	assign B = (displayArea && (border || snakeBody1 || snakeBody2) && ~endGame);
 	always@(posedge VGA_clk)
 	begin
 		Red = {3{R}};
@@ -224,11 +244,10 @@ module VGA_gen(VGA_clk, xCount, yCount, displayArea, VGA_hSync, VGA_vSync);
 	assign VGA_hSync = ~p_hSync;
 endmodule
 
-module kbInput(keyboardCLK, keyboardData, direction1, direction2, reset);
+module kbInput(keyboardCLK, keyboardData, direction1, direction2);
 
 	input keyboardCLK, keyboardData;
 	output reg [4:0] direction1, direction2;
-	output reg reset = 0; 
 	reg [7:0] code;
 	reg [10:0]keyCode;
 	reg recordNext = 0;
@@ -310,9 +329,3 @@ module updateClk(clk, update);
 		end	
 	end
 endmodule
-
-
-
-
-	
-	
