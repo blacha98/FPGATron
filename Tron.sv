@@ -17,7 +17,7 @@ module Tron(
 	wire B;
 	
 	wire [4:0] direction1, direction2;
-	reg [6:0] size = 40;
+	reg [6:0] size = 90;
 	reg [9:0] snakeX1[0:127];
 	reg [8:0] snakeY1[0:127];
 	reg [9:0] snakeHeadX1;
@@ -25,7 +25,7 @@ module Tron(
 	reg [9:0] snakeX2[0:127];
 	reg [8:0] snakeY2[0:127];
 	reg [9:0] snakeHeadX2;
-	reg [9:0] snakeHeadY2;
+	reg [9:0] snakeHeadY2;	
 	reg snakeHead1;
 	reg snakeBody1;
 	reg snakeHead2;
@@ -42,9 +42,11 @@ module Tron(
 	updateClk UPDATE(clk, update);
 	
 	
+
+	
 	always @(posedge VGA_clk)
 	begin
-		border <= (((xCount >= 0) && (xCount < 20) || (xCount >= 630) && (xCount < 641)) || ((yCount >= 0) && (yCount < 11) || (yCount >= 470) && (yCount < 481)));
+		border <= (((xCount >= 0) && (xCount < 20) || (xCount >= 630) && (xCount < 641)) || ((yCount >= 0) && (yCount < 11) || (yCount >= 470) && (yCount < 481))) || (((xCount >= 160 && xCount < 170) || (xCount >= 480 && xCount < 490)) && ((yCount >= 160 && yCount < 230) || (yCount >= 250 && yCount < 320))) || ((xCount >= 160 && xCount < 480) && ((yCount >= 160 && yCount < 170) || (yCount >= 310 && yCount < 320)));
 	end
 	
 	always@(posedge update)
@@ -68,14 +70,17 @@ module Tron(
 		end
 		else if(~start)
 		begin
-			for(count3 = 0; count3 < 128; count3 = count3+1)
+			for(count3 = 1; count3 < size; count3 = count3+1)
 				begin
-					snakeX1[count3] = 160;
-					snakeY1[count3] = 160;
+					snakeX1[count3] = 100;
+					snakeY1[count3] = 100;
 				end
+			snakeX1[0] = 110;
+			snakeY1[0] = 100;
 		end
 	
 	end
+	
 	
 	always@(posedge VGA_clk)
 	begin
@@ -118,11 +123,13 @@ module Tron(
 		end
 		else if(~start)
 		begin
-			for(count3 = 0; count3 < 128; count3 = count3+1)
+			for(count3 = 0; count3 < size; count3 = count3+1)
 				begin
-					snakeX2[count3] = 300;
-					snakeY2[count3] = 300;
+					snakeX2[count3] = 400;
+					snakeY2[count3] = 400;
 				end
+			snakeX2[0] = 410;
+			snakeY2[0] = 400;
 		end
 	
 	end
@@ -151,11 +158,11 @@ module Tron(
 	begin
 		if(start)
 		begin
-			if(snakeHead1 && (border || snakeBody2))
+			if(snakeHead1 && (border || snakeBody1 || snakeBody2))
 			begin
 				endGame = 1;
 			end
-			else if(snakeHead2 && (border || snakeBody1))
+			else if(snakeHead2 && (border || snakeBody1 || snakeBody2))
 			begin
 				endGame = 1;
 			end
@@ -165,6 +172,7 @@ module Tron(
 			endGame = 0;
 		end
 	end
+
 	
 	assign R = (displayArea && (snakeHead2 || endGame));
 	assign G = (displayArea && snakeHead1 && ~endGame);
@@ -216,8 +224,7 @@ module VGA_gen(VGA_clk, xCount, yCount, displayArea, VGA_hSync, VGA_vSync);
 		else
 			xCount <= xCount + 1;
 	end
-	// 93sync, 46 bp, 640 display, 15 fp
-	// 2 sync, 33 bp, 480 display, 10 fp
+
 	always@(posedge VGA_clk)
 	begin
 		if(xCount === maxH)
