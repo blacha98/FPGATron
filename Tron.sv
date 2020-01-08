@@ -17,7 +17,7 @@ module Tron(
 	wire B;
 	
 	wire [4:0] direction1, direction2;
-	reg [6:0] size = 90;
+	reg [6:0] size = 30;
 	reg [9:0] snakeX1[0:127];
 	reg [8:0] snakeY1[0:127];
 	reg [9:0] snakeHeadX1;
@@ -30,26 +30,26 @@ module Tron(
 	reg snakeBody1;
 	reg snakeHead2;
 	reg snakeBody2;
-	reg endGame;
+	reg endGameR, endGameG;
 	reg border;
 	reg found;
 	wire update, reset;
 	integer count1, count2, count3;
 	
-	clk_reduce reduce1(clk, VGA_clk);
-	VGA_gen gen1(VGA_clk, xCount, yCount, displayArea, VGA_hSync, VGA_vSync);
-	kbInput kbIn(keyboardCLK, keyboardData, direction1, direction2);
-	updateClk UPDATE(clk, update);
+	clk_reduce reduce1(clk, VGA_clk); //redukcja clocka do VGA
+	VGA_gen gen1(VGA_clk, xCount, yCount, displayArea, VGA_hSync, VGA_vSync); //generowanie VGA
+	kbInput kbIn(keyboardCLK, keyboardData, direction1, direction2); //obsluga klawiatury
+	updateClk UPDATE(clk, update); //redukcja clocka do poruszania
 	
 	
 
 	
-	always @(posedge VGA_clk)
+	always @(posedge VGA_clk) //generowanie ramki i areny
 	begin
 		border <= (((xCount >= 0) && (xCount < 20) || (xCount >= 630) && (xCount < 641)) || ((yCount >= 0) && (yCount < 11) || (yCount >= 470) && (yCount < 481))) || (((xCount >= 160 && xCount < 170) || (xCount >= 480 && xCount < 490)) && ((yCount >= 160 && yCount < 230) || (yCount >= 250 && yCount < 320))) || ((xCount >= 160 && xCount < 480) && ((yCount >= 160 && yCount < 170) || (yCount >= 310 && yCount < 320)));
 	end
 	
-	always@(posedge update)
+	always@(posedge update) //poruszanie weza 1
 	begin
 		if(start)
 		begin
@@ -82,7 +82,7 @@ module Tron(
 	end
 	
 	
-	always@(posedge VGA_clk)
+	always@(posedge VGA_clk) //generowanie ciala weza 1
 	begin
 		found = 0;
 		
@@ -96,13 +96,13 @@ module Tron(
 		end
 	end
 	
-	always@(posedge VGA_clk)
+	always@(posedge VGA_clk) //generowanie glowy weza 1
 	begin	
 		snakeHead1 = (xCount > snakeX1[0] && xCount < (snakeX1[0]+10)) && (yCount > snakeY1[0] && yCount < (snakeY1[0]+10));
 	end
 	
-	//snake2
-	always@(posedge update)
+	
+	always@(posedge update) //poruszanie weza 2
 	begin
 		if(start)
 		begin
@@ -134,7 +134,7 @@ module Tron(
 	
 	end
 	
-	always@(posedge VGA_clk)
+	always@(posedge VGA_clk) //generowanie ciala weza 2
 	begin
 		found = 0;
 		
@@ -148,35 +148,36 @@ module Tron(
 		end
 	end
 	
-	always@(posedge VGA_clk)
+	always@(posedge VGA_clk) //generowanie glowy weza 2
 	begin	
 		snakeHead2 = (xCount > snakeX2[0] && xCount < (snakeX2[0]+10)) && (yCount > snakeY2[0] && yCount < (snakeY2[0]+10));
 	end
-	//end snake2
 	
-	always@ (posedge VGA_clk)
+	always@ (posedge VGA_clk) //obsluga zderzen
 	begin
 		if(start)
 		begin
 			if(snakeHead1 && (border || snakeBody1 || snakeBody2))
 			begin
-				endGame = 1;
+				endGameR = 1;
 			end
 			else if(snakeHead2 && (border || snakeBody1 || snakeBody2))
 			begin
-				endGame = 1;
+				endGameG = 1;
 			end
 		end
 		else if (~start)
 		begin
-			endGame = 0;
+			endGameR = 0;
+			endGameG = 0;
 		end
 	end
 
+	//obsluga wyswietlania
 	
-	assign R = (displayArea && (snakeHead2 || endGame));
-	assign G = (displayArea && snakeHead1 && ~endGame);
-	assign B = (displayArea && (border || snakeBody1 || snakeBody2) && ~endGame);
+	assign R = (displayArea && (border || snakeHead2 || endGameR));
+	assign G = (displayArea && (border || snakeHead1 || endGameG));
+	assign B = (displayArea && (border || snakeBody1 || snakeBody2) && (~endGameR && ~endGameG));
 	always@(posedge VGA_clk)
 	begin
 		Red = {3{R}};
@@ -189,8 +190,8 @@ endmodule
 
 module clk_reduce(clk, VGA_clk);
 
-	input clk; //50MHz clock
-	output reg VGA_clk; //25MHz clock
+	input clk; 					//50MHz clock
+	output reg VGA_clk; 		//25MHz clock
 	always@(posedge clk)
 	begin
 		VGA_clk=~VGA_clk;
@@ -207,15 +208,15 @@ module VGA_gen(VGA_clk, xCount, yCount, displayArea, VGA_hSync, VGA_vSync);
 
 	reg p_hSync, p_vSync; 
 	
-	integer porchHF = 640; //start of horizntal front porch
-	integer syncH = 655;//start of horizontal sync
-	integer porchHB = 747; //start of horizontal back porch
-	integer maxH = 793; //total length of line.
+	integer porchHF = 640; 	//start of horizntal front porch
+	integer syncH = 655;		//start of horizontal sync
+	integer porchHB = 747; 	//start of horizontal back porch
+	integer maxH = 793; 		//total length of line.
 
-	integer porchVF = 480; //start of vertical front porch 
-	integer syncV = 490; //start of vertical sync
-	integer porchVB = 492; //start of vertical back porch
-	integer maxV = 525; //total rows. 
+	integer porchVF = 480; 	//start of vertical front porch 
+	integer syncV = 490; 	//start of vertical sync
+	integer porchVB = 492; 	//start of vertical back porch
+	integer maxV = 525; 		//total rows. 
 
 	always@(posedge VGA_clk)
 	begin
@@ -260,7 +261,7 @@ module kbInput(keyboardCLK, keyboardData, direction1, direction2);
 	reg recordNext = 0;
 	integer count = 0;
 
-always@(negedge keyboardCLK)
+always@(negedge keyboardCLK) //liczenie kodow klawiatury
 	begin
 		keyCode[count] = keyboardData;
 		count = count + 1;			
